@@ -1,0 +1,89 @@
+# NSQ 客户端配置文件
+# 支持通过环境变量覆盖配置项
+
+# NSQ 服务器配置
+nsq:
+  # NSQ Daemon 地址列表（TCP 端口用于生产者连接）
+  nsqd_addresses:
+    - "172.16.1.40:4150"
+  
+  # NSQ Lookup 地址列表（HTTP 端口用于服务发现）
+  nsqlookupd_addresses:
+    - "172.16.1.40:4161"
+  
+  # 连接配置
+  connection:
+    # 连接超时时间（秒）
+    dial_timeout: 30
+    # 读取超时时间（秒）
+    read_timeout: 60
+    # 写入超时时间（秒）
+    write_timeout: 30
+    # 心跳间隔（秒）
+    heartbeat_interval: 30
+    # 最大重连尝试次数
+    max_attempts: 5
+    # 重连间隔（秒）
+    reconnect_delay: 15
+
+# 生产者配置
+producer:
+  # 默认主题名称
+  default_topic: "test_topic"
+  # 消息发送超时时间（毫秒）
+  publish_timeout: 5000
+  # 最大内存中的消息数量
+  max_in_flight: 200
+
+# 消费者配置
+consumer:
+  # 默认主题和频道
+  default_topic: "test_topic"
+  default_channel: "test_channel"
+  # 并发处理的消息数量
+  max_in_flight: 200
+  # 消息处理超时时间（秒）
+  msg_timeout: 60
+  # 最大重试次数
+  max_attempts: 5
+  # 重新排队延迟时间（毫秒）
+  requeue_delay: 90000
+
+# 日志配置 (mlog)
+logging:
+  # 日志级别: debug, info, warn, error
+  level: "info"
+  # 日志前缀
+  prefix: "[NSQ-Client] "
+  # 日志格式: json, text
+  format: "text"
+  # 日志文件夹
+  director: "./logs"
+  # 编码级别: LowercaseLevelEncoder, LowercaseColorLevelEncoder, CapitalLevelEncoder, CapitalColorLevelEncoder
+  encode_level: "LowercaseLevelEncoder"
+  # 栈名
+  stacktrace_key: "stacktrace"
+  # 显示行号
+  show_line: true
+  # 输出到控制台
+  log_in_console: true
+  # 日志保留天数
+  retention_day: 7
+  # 日志文件最大大小（MB）
+  max_size: 100
+  # 日志文件数量
+  max_backups: 5
+  # 启用日志分片
+  enable_split: true
+  # 启用日志压缩
+  enable_compress: true
+  # 启用异步日志
+  enable_async: false
+  # 异步日志缓冲区大小
+  async_buffer_size: 10000
+  # 缓冲区满时是否丢弃日志
+  async_drop_on_full: false
+  # 使用相对路径显示
+  use_relative_path: true
+  # 编译根目录路径
+  build_root_path: ""
