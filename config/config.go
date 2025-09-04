@@ -50,6 +50,17 @@ type ConsumerConfig struct {
 	MsgTimeout     int    `yaml:"msg_timeout"`     // 消息处理超时时间（秒）
 	MaxAttempts    int    `yaml:"max_attempts"`    // 最大重试次数
 	RequeueDelay   int    `yaml:"requeue_delay"`   // 重新排队延迟时间（毫秒）
+	// 失败消息处理配置
+	FailedMessage FailedMessageConfig `yaml:"failed_message"` // 失败消息处理配置
+}
+
+// FailedMessageConfig 失败消息处理配置
+type FailedMessageConfig struct {
+	Enabled           bool   `yaml:"enabled"`             // 是否启用失败消息处理
+	TopicSuffix       string `yaml:"topic_suffix"`        // 失败队列主题后缀，默认为 "_failed_channel"
+	MaxRetryAttempts  int    `yaml:"max_retry_attempts"`  // 发送失败消息的最大重试次数
+	RetryDelay        int    `yaml:"retry_delay"`         // 发送失败消息的重试延迟（毫秒）
+	IncludeStackTrace bool   `yaml:"include_stack_trace"` // 是否包含错误堆栈信息
 }
 
 // LoggingConfig 日志配置 (mlog)

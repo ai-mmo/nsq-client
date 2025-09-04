@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"nsq-client/config"
+	"runtime"
 	"sync"
 	"time"
 
@@ -18,18 +19,24 @@ type MessageHandler func(message *nsq.Message) error
 
 // Consumer NSQ 消息消费者
 type Consumer struct {
-	consumer *nsq.Consumer
-	config   *config.Config
-	handler  MessageHandler
-	topic    string
-	channel  string
-	mu       sync.RWMutex
-	closed   bool
-	wg       sync.WaitGroup
+	consumer         *nsq.Consumer
+	config           *config.Config
+	handler          MessageHandler
+	topic            string
+	channel          string
+	mu               sync.RWMutex
+	closed           bool
+	wg               sync.WaitGroup
+	failedMsgHandler *FailedMessageHandler // 失败消息处理器
 }
 
 // NewConsumer 创建新的消费者实例
 func NewConsumer(cfg *config.Config, topic, channel string, handler MessageHandler) (*Consumer, error) {
+	return NewConsumerWithFailedMessageHandler(cfg, topic, channel, handler, nil)
+}
+
+// NewConsumerWithFailedMessageHandler 创建带失败消息处理器的消费者实例
+func NewConsumerWithFailedMessageHandler(cfg *config.Config, topic, channel string, handler MessageHandler, producer MessageProducer) (*Consumer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("配置不能为空")
 	}
@@ -100,6 +107,14 @@ func NewConsumer(cfg *config.Config, topic, channel string, handler MessageHandl
 		closed:   false,
 	}
 
+	// 如果提供了生产者，创建失败消息处理器
+	if producer != nil {
+		consumer.failedMsgHandler = NewFailedMessageHandler(cfg, producer)
+		mlog.Info("失败消息处理器已启用: topic=%s, channel=%s", topic, channel)
+	} else if cfg.Consumer.FailedMessage.Enabled {
+		mlog.Warn("失败消息处理已启用但未提供生产者，将跳过失败消息处理: topic=%s, channel=%s", topic, channel)
+	}
+
 	// 设置消息处理器
 	nsqConsumer.AddHandler(consumer)
 
@@ -110,11 +125,31 @@ func NewConsumer(cfg *config.Config, topic, channel string, handler MessageHandl
 
 // HandleMessage 实现 nsq.Handler 接口
 func (c *Consumer) HandleMessage(message *nsq.Message) error {
+	// 防护措施：捕获panic，避免整个程序崩溃
+	defer func() {
+		if r := recover(); r != nil {
+			mlog.Error("消息处理发生panic，已恢复: message_id=%s, panic=%v",
+				string(message.ID[:]), r)
+			// 记录堆栈信息
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			mlog.Error("panic堆栈信息:\n%s", string(buf[:n]))
+			// panic情况下也要完成消息，避免无限重试
+			message.Finish()
+		}
+	}()
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	if c.closed {
 		return fmt.Errorf("消费者已关闭")
+	}
+
+	// 安全检查：确保message不为nil
+	if message == nil {
+		mlog.Error("接收到空消息，跳过处理")
+		return fmt.Errorf("消息为空")
 	}
 
 	// 记录消息接收日志
@@ -140,10 +175,22 @@ func (c *Consumer) HandleMessage(message *nsq.Message) error {
 			message.RequeueWithoutBackoff(c.config.GetRequeueDelay())
 			return nil
 		} else {
-			mlog.Error("消息处理失败次数超过最大重试次数，丢弃消息: message_id=%s, attempts=%d",
+			mlog.Error("消息处理失败次数超过最大重试次数: message_id=%s, attempts=%d",
 				string(message.ID[:]), message.Attempts)
 
-			// 超过最大重试次数，完成消息（丢弃）
+			// 处理失败消息（发送到失败队列）
+			if c.failedMsgHandler != nil {
+				if failedErr := c.failedMsgHandler.HandleFailedMessage(c.topic, c.channel, message, err); failedErr != nil {
+					mlog.Error("处理失败消息时发生错误: message_id=%s, error=%v", string(message.ID[:]), failedErr)
+					// 即使失败消息处理失败，也要完成原消息以避免无限循环
+				} else {
+					mlog.Info("失败消息已处理: message_id=%s", string(message.ID[:]))
+				}
+			} else {
+				mlog.Warn("未配置失败消息处理器，消息将被丢弃: message_id=%s", string(message.ID[:]))
+			}
+
+			// 完成消息（避免重复处理）
 			message.Finish()
 			return nil
 		}
@@ -236,17 +283,46 @@ func (c *Consumer) Stop() {
 	defer c.mu.Unlock()
 
 	if c.closed {
+		mlog.Debug("消费者已经关闭，跳过停止操作")
 		return
 	}
 
 	mlog.Info("正在停止 NSQ 消费者...")
 
-	// 停止消费者
-	c.consumer.Stop()
+	// 设置关闭标志，防止新的消息处理
 	c.closed = true
 
-	// 等待所有协程结束
-	c.wg.Wait()
+	// 安全停止NSQ消费者
+	if c.consumer != nil {
+		// 先暂停消费，等待当前消息处理完成
+		c.consumer.ChangeMaxInFlight(0)
+		time.Sleep(100 * time.Millisecond) // 给当前处理中的消息一些时间完成
+
+		// 停止消费者
+		c.consumer.Stop()
+	} else {
+		mlog.Warn("NSQ消费者实例为空，跳过停止操作")
+	}
+
+	// 释放锁后等待协程结束，避免死锁
+	c.mu.Unlock()
+
+	// 等待所有协程结束，设置超时防止无限等待
+	done := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		mlog.Info("所有协程已正常结束")
+	case <-time.After(30 * time.Second):
+		mlog.Warn("等待协程结束超时，强制退出")
+	}
+
+	// 重新获取锁
+	c.mu.Lock()
 
 	mlog.Info("NSQ 消费者已停止")
 }
@@ -276,7 +352,7 @@ func (c *Consumer) GetStats() map[string]interface{} {
 	}
 
 	stats := c.consumer.Stats()
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"status":           "running",
 		"connection_count": stats.Connections,
 		"message_count":    stats.MessagesReceived,
@@ -284,6 +360,13 @@ func (c *Consumer) GetStats() map[string]interface{} {
 		"message_requeued": stats.MessagesRequeued,
 		"is_connected":     c.IsConnected(),
 	}
+
+	// 添加失败消息处理统计信息
+	if c.failedMsgHandler != nil {
+		result["failed_message_handler"] = c.failedMsgHandler.GetFailedMessageStats()
+	}
+
+	return result
 }
 
 // ChangeMaxInFlight 动态调整最大并发处理数
@@ -292,6 +375,26 @@ func (c *Consumer) ChangeMaxInFlight(maxInFlight int) {
 	defer c.mu.Unlock()
 
 	if c.closed {
+		mlog.Warn("消费者已关闭，无法调整并发数")
+		return
+	}
+
+	// 参数验证
+	if maxInFlight < 0 {
+		mlog.Error("无效的并发数: %d，必须大于等于0", maxInFlight)
+		return
+	}
+
+	// 限制最大并发数，防止资源耗尽
+	const maxAllowedInFlight = 1000
+	if maxInFlight > maxAllowedInFlight {
+		mlog.Warn("并发数%d超过最大限制%d，将调整为最大限制", maxInFlight, maxAllowedInFlight)
+		maxInFlight = maxAllowedInFlight
+	}
+
+	// 安全检查：确保consumer不为nil
+	if c.consumer == nil {
+		mlog.Error("NSQ消费者实例为空，无法调整并发数")
 		return
 	}
 
@@ -305,6 +408,13 @@ func (c *Consumer) Pause() {
 	defer c.mu.Unlock()
 
 	if c.closed {
+		mlog.Warn("消费者已关闭，无法暂停")
+		return
+	}
+
+	// 安全检查：确保consumer不为nil
+	if c.consumer == nil {
+		mlog.Error("NSQ消费者实例为空，无法暂停")
 		return
 	}
 
@@ -318,11 +428,23 @@ func (c *Consumer) Resume() {
 	defer c.mu.Unlock()
 
 	if c.closed {
+		mlog.Warn("消费者已关闭，无法恢复")
+		return
+	}
+
+	// 安全检查：确保consumer和config不为nil
+	if c.consumer == nil {
+		mlog.Error("NSQ消费者实例为空，无法恢复")
+		return
+	}
+
+	if c.config == nil {
+		mlog.Error("消费者配置为空，无法恢复")
 		return
 	}
 
 	c.consumer.ChangeMaxInFlight(c.config.Consumer.MaxInFlight)
-	mlog.Info("消费者已恢复")
+	mlog.Info("消费者已恢复: max_in_flight=%d", c.config.Consumer.MaxInFlight)
 }
 
 // ensureTopicAndChannelExist 确保主题和频道存在，如果不存在则动态创建
@@ -374,12 +496,21 @@ func (c *Consumer) createTopicOnNSQD(nsqdAddr, topic string) error {
 	createURL := fmt.Sprintf("http://%s/topic/create?topic=%s",
 		c.getNSQDHTTPAddr(nsqdAddr), url.QueryEscape(topic))
 
+	// 创建带超时的HTTP客户端，防止长时间阻塞
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 10秒超时
+	}
+
 	// 发送 HTTP POST 请求创建主题
-	resp, err := http.Post(createURL, "", nil)
+	resp, err := client.Post(createURL, "", nil)
 	if err != nil {
 		return fmt.Errorf("发送创建主题请求失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("创建主题失败，状态码: %d", resp.StatusCode)
@@ -394,12 +525,21 @@ func (c *Consumer) createChannelOnNSQD(nsqdAddr, topic, channel string) error {
 	createURL := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
 		c.getNSQDHTTPAddr(nsqdAddr), url.QueryEscape(topic), url.QueryEscape(channel))
 
+	// 创建带超时的HTTP客户端，防止长时间阻塞
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 10秒超时
+	}
+
 	// 发送 HTTP POST 请求创建频道
-	resp, err := http.Post(createURL, "", nil)
+	resp, err := client.Post(createURL, "", nil)
 	if err != nil {
 		return fmt.Errorf("发送创建频道请求失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("创建频道失败，状态码: %d", resp.StatusCode)
@@ -452,4 +592,108 @@ func (c *Consumer) CreateTopicAndChannel(topic, channel string) error {
 
 	mlog.Info("主题和频道创建成功: topic=%s, channel=%s", topic, channel)
 	return nil
+}
+
+// HealthCheck 健康检查
+func (c *Consumer) HealthCheck() map[string]interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	health := map[string]interface{}{
+		"status":    "unknown",
+		"timestamp": time.Now().Unix(),
+		"checks":    make(map[string]interface{}),
+	}
+
+	checks := health["checks"].(map[string]interface{})
+
+	// 检查消费者状态
+	if c.closed {
+		health["status"] = "stopped"
+		checks["consumer_status"] = "stopped"
+		return health
+	}
+
+	checks["consumer_status"] = "running"
+
+	// 检查NSQ连接状态
+	if c.consumer != nil {
+		stats := c.consumer.Stats()
+		checks["connection_count"] = stats.Connections
+		checks["message_count"] = stats.MessagesReceived
+		checks["message_finished"] = stats.MessagesFinished
+		checks["message_requeued"] = stats.MessagesRequeued
+
+		if stats.Connections > 0 {
+			checks["nsq_connection"] = "healthy"
+		} else {
+			checks["nsq_connection"] = "unhealthy"
+		}
+	} else {
+		checks["nsq_connection"] = "not_initialized"
+	}
+
+	// 检查失败消息处理器状态
+	if c.failedMsgHandler != nil {
+		failedStats := c.failedMsgHandler.GetFailedMessageStats()
+		checks["failed_message_handler"] = failedStats
+	}
+
+	// 综合健康状态
+	if checks["consumer_status"] == "running" && checks["nsq_connection"] == "healthy" {
+		health["status"] = "healthy"
+	} else {
+		health["status"] = "unhealthy"
+	}
+
+	return health
+}
+
+// GetDetailedStats 获取详细统计信息
+func (c *Consumer) GetDetailedStats() map[string]interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	stats := map[string]interface{}{
+		"basic_info": map[string]interface{}{
+			"topic":     c.topic,
+			"channel":   c.channel,
+			"closed":    c.closed,
+			"timestamp": time.Now().Unix(),
+		},
+	}
+
+	if c.closed {
+		stats["status"] = "closed"
+		return stats
+	}
+
+	// NSQ统计信息
+	if c.consumer != nil {
+		nsqStats := c.consumer.Stats()
+		stats["nsq_stats"] = map[string]interface{}{
+			"connections":       nsqStats.Connections,
+			"messages_received": nsqStats.MessagesReceived,
+			"messages_finished": nsqStats.MessagesFinished,
+			"messages_requeued": nsqStats.MessagesRequeued,
+			"is_connected":      nsqStats.Connections > 0,
+		}
+	}
+
+	// 配置信息
+	if c.config != nil {
+		stats["config"] = map[string]interface{}{
+			"max_in_flight": c.config.Consumer.MaxInFlight,
+			"max_attempts":  c.config.Consumer.MaxAttempts,
+			"msg_timeout":   c.config.Consumer.MsgTimeout,
+			"requeue_delay": c.config.Consumer.RequeueDelay,
+		}
+	}
+
+	// 失败消息处理器统计
+	if c.failedMsgHandler != nil {
+		stats["failed_message_handler"] = c.failedMsgHandler.GetFailedMessageStats()
+	}
+
+	return stats
 }

@@ -49,6 +49,19 @@ consumer:
   # 重新排队延迟时间（毫秒）
   requeue_delay: 90000
 
+  # 失败消息处理配置
+  failed_message:
+    # 是否启用失败消息处理
+    enabled: true
+    # 失败队列主题后缀
+    topic_suffix: "_failed_channel"
+    # 发送失败消息的最大重试次数
+    max_retry_attempts: 3
+    # 发送失败消息的重试延迟（毫秒）
+    retry_delay: 1000
+    # 是否包含错误堆栈信息
+    include_stack_trace: true
+
 # 日志配置 (mlog)
 logging:
   # 日志级别: debug, info, warn, error
