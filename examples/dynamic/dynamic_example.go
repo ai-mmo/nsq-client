@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/nsqio/go-nsq"
+	"mlog"
+	"nsq-client/client/consumer"
+	"nsq-client/client/producer"
+	"nsq-client/config"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	"nsq-client/client/consumer"
-	"nsq-client/client/producer"
-	"nsq-client/config"
-	"github.com/nsqio/go-nsq"
-	"mlog"
 )
 
 // DynamicMessage 动态消息结构
