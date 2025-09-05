@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/nsqio/go-nsq"
+	"go.uber.org/zap"
 )
 
 // Producer NSQ 消息生产者
@@ -26,36 +27,36 @@ type Message struct {
 }
 
 // NewProducer 创建新的生产者实例
-func NewProducer(cfg *Config) (*Producer, error) {
+func NewProducer(cfg *Config, logger *zap.Logger) (*Producer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("配置不能为空")
 	}
 
-	// 初始化 mlog
-	zapConfig := mlog.ZapConfig{
-		Level:           cfg.Logging.Level,
-		Prefix:          cfg.Logging.Prefix,
-		Format:          cfg.Logging.Format,
-		Director:        cfg.Logging.Director,
-		EncodeLevel:     cfg.Logging.EncodeLevel,
-		StacktraceKey:   cfg.Logging.StacktraceKey,
-		ShowLine:        cfg.Logging.ShowLine,
-		LogInConsole:    cfg.Logging.LogInConsole,
-		RetentionDay:    cfg.Logging.RetentionDay,
-		MaxSize:         cfg.Logging.MaxSize,
-		MaxBackups:      cfg.Logging.MaxBackups,
-		EnableSplit:     cfg.Logging.EnableSplit,
-		EnableCompress:  cfg.Logging.EnableCompress,
-		EnableAsync:     cfg.Logging.EnableAsync,
-		AsyncBufferSize: cfg.Logging.AsyncBufferSize,
-		AsyncDropOnFull: cfg.Logging.AsyncDropOnFull,
-		UseRelativePath: cfg.Logging.UseRelativePath,
-		BuildRootPath:   cfg.Logging.BuildRootPath,
+	if logger == nil {
+		// 初始化 mlog
+		zapConfig := mlog.ZapConfig{
+			Level:           cfg.Logging.Level,
+			Prefix:          cfg.Logging.Prefix,
+			Format:          cfg.Logging.Format,
+			Director:        cfg.Logging.Director,
+			EncodeLevel:     cfg.Logging.EncodeLevel,
+			StacktraceKey:   cfg.Logging.StacktraceKey,
+			ShowLine:        cfg.Logging.ShowLine,
+			LogInConsole:    cfg.Logging.LogInConsole,
+			RetentionDay:    cfg.Logging.RetentionDay,
+			MaxSize:         cfg.Logging.MaxSize,
+			MaxBackups:      cfg.Logging.MaxBackups,
+			EnableSplit:     cfg.Logging.EnableSplit,
+			EnableCompress:  cfg.Logging.EnableCompress,
+			EnableAsync:     cfg.Logging.EnableAsync,
+			AsyncBufferSize: cfg.Logging.AsyncBufferSize,
+			AsyncDropOnFull: cfg.Logging.AsyncDropOnFull,
+			UseRelativePath: cfg.Logging.UseRelativePath,
+			BuildRootPath:   cfg.Logging.BuildRootPath,
+		}
+		// 初始化 mlog
+		mlog.InitialZap("nsq-producer", 1, cfg.Logging.Level, zapConfig)
 	}
-
-	// 初始化 mlog
-	mlog.InitialZap("nsq-producer", 1, cfg.Logging.Level, zapConfig)
-	logger := mlog.GLOG()
 
 	// 创建 NSQ 配置
 	nsqConfig := nsq.NewConfig()
@@ -108,7 +109,7 @@ func NewProducer(cfg *Config) (*Producer, error) {
 		closed:   false,
 	}
 
-	logger.Info("NSQ 生产者初始化成功")
+	mlog.Info("NSQ 生产者初始化成功")
 	return producer, nil
 }
 

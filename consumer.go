@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"go.uber.org/zap"
 )
 
 // MessageHandler 消息处理函数类型
@@ -30,12 +31,12 @@ type Consumer struct {
 }
 
 // NewConsumer 创建新的消费者实例
-func NewConsumer(cfg *Config, topic, channel string, handler MessageHandler) (*Consumer, error) {
-	return NewConsumerWithFailedMessageHandler(cfg, topic, channel, handler, nil)
+func NewConsumer(cfg *Config, logger *zap.Logger, topic, channel string, handler MessageHandler) (*Consumer, error) {
+	return NewConsumerWithFailedMessageHandler(cfg, logger, topic, channel, handler, nil)
 }
 
 // NewConsumerWithFailedMessageHandler 创建带失败消息处理器的消费者实例
-func NewConsumerWithFailedMessageHandler(cfg *Config, topic, channel string, handler MessageHandler, producer MessageProducer) (*Consumer, error) {
+func NewConsumerWithFailedMessageHandler(cfg *Config, logger *zap.Logger, topic, channel string, handler MessageHandler, producer MessageProducer) (*Consumer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("配置不能为空")
 	}
@@ -44,7 +45,7 @@ func NewConsumerWithFailedMessageHandler(cfg *Config, topic, channel string, han
 	}
 
 	// 初始化 mlog（如果还没有初始化）
-	if mlog.GLOG() == nil {
+	if logger == nil {
 		zapConfig := mlog.ZapConfig{
 			Level:           cfg.Logging.Level,
 			Prefix:          cfg.Logging.Prefix,

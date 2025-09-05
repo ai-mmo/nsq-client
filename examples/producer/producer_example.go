@@ -62,7 +62,7 @@ func main() {
 	mlog.Info("配置加载成功: config_path=%s", configPath)
 
 	// 创建生产者
-	prod, err := nsq_client.NewProducer(cfg)
+	prod, err := nsq_client.NewProducer(cfg, nil)
 	if err != nil {
 		mlog.Error("创建生产者失败: %v", err)
 		panic(err)

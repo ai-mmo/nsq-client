@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	nsq_client "github.com/ai-mmo/nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	nsq_client "github.com/ai-mmo/nsq-client"
 
 	"mlog"
 
@@ -154,7 +155,7 @@ func main() {
 	mlog.Info("消费者配置: topic=%s, channel=%s", topic, channel)
 
 	// 创建消费者
-	cons, err := nsq_client.NewConsumer(cfg, topic, channel, processor.ProcessMessage)
+	cons, err := nsq_client.NewConsumer(cfg, nil, topic, channel, processor.ProcessMessage)
 	if err != nil {
 		mlog.Error("创建消费者失败: %v", err)
 		panic(err)

@@ -229,7 +229,7 @@ func main() {
 		originalTopic, failedTopic, viewerChannel)
 
 	// 创建消费者来监听失败队列
-	cons, err := nsq_client.NewConsumer(cfg, failedTopic, viewerChannel, viewer.ProcessFailedMessage)
+	cons, err := nsq_client.NewConsumer(cfg, nil, failedTopic, viewerChannel, viewer.ProcessFailedMessage)
 	if err != nil {
 		mlog.Error("创建失败消息查看器消费者失败: %v", err)
 		panic(err)
