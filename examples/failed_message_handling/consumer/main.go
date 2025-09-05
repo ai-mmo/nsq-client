@@ -177,7 +177,7 @@ func main() {
 		topic, channel, cfg.Consumer.FailedMessage.Enabled)
 
 	// 创建带失败消息处理器的消费者
-	cons, err := nsq_client.NewConsumerWithFailedMessageHandler(cfg, topic, channel, processor.ProcessMessage, prod)
+	cons, err := nsq_client.NewConsumerWithFailedMessageHandler(cfg, nil, topic, channel, processor.ProcessMessage, prod)
 	if err != nil {
 		mlog.Error("创建消费者失败: %v", err)
 		panic(err)
