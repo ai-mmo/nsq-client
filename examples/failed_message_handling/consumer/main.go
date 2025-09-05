@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"nsq-client/client/consumer"
-	"nsq-client/client/producer"
-	"nsq-client/config"
 
 	"mlog"
 
@@ -118,12 +115,12 @@ func (mp *MessageProcessorWithFailedHandler) GetStats() map[string]interface{} {
 
 func main() {
 	// 加载配置
-	configPath := "config/config.yaml"
+	configPath := "config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	}
 
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := nsq_client.LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
@@ -155,7 +152,7 @@ func main() {
 	mlog.Info("配置加载成功: config_path=%s", configPath)
 
 	// 创建生产者用于发送失败消息
-	prod, err := producer.NewProducer(cfg)
+	prod, err := nsq_client.NewProducer(cfg)
 	if err != nil {
 		mlog.Error("创建生产者失败: %v", err)
 		panic(err)
@@ -179,7 +176,7 @@ func main() {
 		topic, channel, cfg.Consumer.FailedMessage.Enabled)
 
 	// 创建带失败消息处理器的消费者
-	cons, err := consumer.NewConsumerWithFailedMessageHandler(cfg, topic, channel, processor.ProcessMessage, prod)
+	cons, err := nsq_client.NewConsumerWithFailedMessageHandler(cfg, topic, channel, processor.ProcessMessage, prod)
 	if err != nil {
 		mlog.Error("创建消费者失败: %v", err)
 		panic(err)
@@ -217,7 +214,7 @@ func main() {
 }
 
 // printConsumerStatsWithFailedHandler 打印统计信息（包含失败消息处理统计）
-func printConsumerStatsWithFailedHandler(ctx context.Context, cons *consumer.Consumer, processor *MessageProcessorWithFailedHandler) {
+func printConsumerStatsWithFailedHandler(ctx context.Context, cons *nsq_client.Consumer, processor *MessageProcessorWithFailedHandler) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 

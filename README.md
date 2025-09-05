@@ -57,7 +57,7 @@ go mod tidy
 复制并修改配置文件：
 
 ```bash
-cp config/config.yaml config/my_config.yaml
+cp config.yaml config/my_config.yaml
 ```
 
 在配置文件中启用失败消息处理：
@@ -77,17 +77,17 @@ consumer:
 
 #### 启动带失败消息处理的消费者
 ```bash
-go run examples/failed_message_handling/consumer/main.go config/config.yaml my_topic my_channel
+go run examples/failed_message_handling/consumer/main.go config.yaml my_topic my_channel
 ```
 
 #### 启动失败消息查看器
 ```bash
-go run examples/failed_message_handling/viewer/main.go config/config.yaml my_topic
+go run examples/failed_message_handling/viewer/main.go config.yaml my_topic
 ```
 
 #### 发送测试消息
 ```bash
-go run examples/producer_example.go config/config.yaml my_topic
+go run examples/producer_example.go config.yaml my_topic
 ```
 
 ### 4. 自动化测试
@@ -113,7 +113,7 @@ import (
 
 func main() {
     // 加载配置
-    cfg, err := config.LoadConfig("config/config.yaml")
+    cfg, err := config.LoadConfig("config.yaml")
     if err != nil {
         panic(err)
     }
@@ -275,7 +275,7 @@ stats := consumer.GetStats()
 ## 文档
 
 - [失败消息处理详细文档](docs/failed_message_handling.md) ⭐
-- [配置文件说明](config/config.yaml)
+- [配置文件说明](config.yaml)
 - [示例程序说明](examples/)
 
 ## 依赖

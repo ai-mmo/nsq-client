@@ -1,4 +1,4 @@
-package producer
+package nsq_client
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"mlog"
 	"net/http"
 	"net/url"
-	"nsq-client/config"
 	"sync"
 
 	"github.com/nsqio/go-nsq"
@@ -15,7 +14,7 @@ import (
 // Producer NSQ 消息生产者
 type Producer struct {
 	producer *nsq.Producer
-	config   *config.Config
+	config   *Config
 	mu       sync.RWMutex
 	closed   bool
 }
@@ -27,7 +26,7 @@ type Message struct {
 }
 
 // NewProducer 创建新的生产者实例
-func NewProducer(cfg *config.Config) (*Producer, error) {
+func NewProducer(cfg *Config) (*Producer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("配置不能为空")
 	}

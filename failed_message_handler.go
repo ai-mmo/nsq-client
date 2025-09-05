@@ -1,10 +1,9 @@
-package consumer
+package nsq_client
 
 import (
 	"encoding/json"
 	"fmt"
 	"mlog"
-	"nsq-client/config"
 	"runtime"
 	"strings"
 	"sync"
@@ -35,7 +34,7 @@ type FailedMessage struct {
 
 // FailedMessageHandler 失败消息处理器
 type FailedMessageHandler struct {
-	config          *config.Config
+	config          *Config
 	producer        MessageProducer // 用于发送失败消息的生产者接口
 	mu              sync.RWMutex    // 保护并发访问
 	failureCount    int64           // 连续失败次数
@@ -49,7 +48,7 @@ type MessageProducer interface {
 }
 
 // NewFailedMessageHandler 创建失败消息处理器
-func NewFailedMessageHandler(cfg *config.Config, producer MessageProducer) *FailedMessageHandler {
+func NewFailedMessageHandler(cfg *Config, producer MessageProducer) *FailedMessageHandler {
 	return &FailedMessageHandler{
 		config:   cfg,
 		producer: producer,

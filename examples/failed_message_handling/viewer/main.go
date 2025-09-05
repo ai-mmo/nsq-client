@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"nsq-client/client/consumer"
-	"nsq-client/config"
 
 	"mlog"
 
@@ -171,12 +169,12 @@ func (fmv *FailedMessageViewer) GetStats() map[string]interface{} {
 
 func main() {
 	// 加载配置
-	configPath := "config/config.yaml"
+	configPath := "config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	}
 
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := nsq_client.LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
@@ -230,7 +228,7 @@ func main() {
 		originalTopic, failedTopic, viewerChannel)
 
 	// 创建消费者来监听失败队列
-	cons, err := consumer.NewConsumer(cfg, failedTopic, viewerChannel, viewer.ProcessFailedMessage)
+	cons, err := nsq_client.NewConsumer(cfg, failedTopic, viewerChannel, viewer.ProcessFailedMessage)
 	if err != nil {
 		mlog.Error("创建失败消息查看器消费者失败: %v", err)
 		panic(err)
@@ -268,7 +266,7 @@ func main() {
 }
 
 // printViewerStats 打印查看器统计信息
-func printViewerStats(ctx context.Context, cons *consumer.Consumer, viewer *FailedMessageViewer) {
+func printViewerStats(ctx context.Context, cons *nsq_client.Consumer, viewer *FailedMessageViewer) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 

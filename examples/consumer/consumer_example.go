@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"nsq-client/client/consumer"
-	"nsq-client/config"
 
 	"mlog"
 
@@ -104,12 +102,12 @@ func (mp *MessageProcessor) GetStats() map[string]interface{} {
 
 func main() {
 	// 加载配置
-	configPath := "config/config.yaml"
+	configPath := "config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	}
 
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := nsq_client.LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
@@ -156,7 +154,7 @@ func main() {
 	mlog.Info("消费者配置: topic=%s, channel=%s", topic, channel)
 
 	// 创建消费者
-	cons, err := consumer.NewConsumer(cfg, topic, channel, processor.ProcessMessage)
+	cons, err := nsq_client.NewConsumer(cfg, topic, channel, processor.ProcessMessage)
 	if err != nil {
 		mlog.Error("创建消费者失败: %v", err)
 		panic(err)
@@ -194,7 +192,7 @@ func main() {
 }
 
 // printConsumerStats 打印统计信息
-func printConsumerStats(ctx context.Context, cons *consumer.Consumer, processor *MessageProcessor) {
+func printConsumerStats(ctx context.Context, cons *nsq_client.Consumer, processor *MessageProcessor) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 

@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 配置
-CONFIG_FILE="config/config.yaml"
+CONFIG_FILE="config.yaml"
 TEST_TOPIC="test_failed_handling"
 TEST_CHANNEL="test_channel"
 FAILED_TOPIC="${TEST_TOPIC}_failed_channel"

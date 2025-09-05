@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/nsqio/go-nsq"
 	"mlog"
-	"nsq-client/client/consumer"
-	"nsq-client/client/producer"
-	"nsq-client/config"
+	"nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/nsqio/go-nsq"
 )
 
 // DynamicMessage 动态消息结构
@@ -101,12 +100,12 @@ func (dp *DynamicProcessor) GetStats() map[string]interface{} {
 
 func main() {
 	// 加载配置
-	configPath := "config/config.yaml"
+	configPath := "config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	}
 
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := nsq_client.LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
@@ -126,7 +125,7 @@ func main() {
 	mlog.Info("配置加载成功: config_path=%s", configPath)
 
 	// 创建生产者
-	prod, err := producer.NewProducer(cfg)
+	prod, err := nsq_client.NewProducer(cfg)
 	if err != nil {
 		mlog.Error("创建生产者失败: %v", err)
 		panic(err)
@@ -139,7 +138,7 @@ func main() {
 	// 创建消费者
 	topic := "dynamic_messages"
 	channel := "dynamic_processor"
-	cons, err := consumer.NewConsumer(cfg, topic, channel, processor.ProcessDynamicMessage)
+	cons, err := nsq_client.NewConsumer(cfg, topic, channel, processor.ProcessDynamicMessage)
 	if err != nil {
 		mlog.Error("创建消费者失败: %v", err)
 		panic(err)
@@ -182,7 +181,7 @@ func main() {
 }
 
 // generateDynamicMessages 生成动态消息（用于演示）
-func generateDynamicMessages(ctx context.Context, prod *producer.Producer, topic string) {
+func generateDynamicMessages(ctx context.Context, prod *nsq_client.Producer, topic string) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 

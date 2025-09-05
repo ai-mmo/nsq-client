@@ -40,7 +40,7 @@
 - 增强的 `HandleMessage`: 在消息处理失败时自动调用失败消息处理器
 - 增强的 `GetStats`: 包含失败消息处理统计信息
 
-### 3. 配置支持 (`config/config.go` 和 `config/config.yaml`)
+### 3. 配置支持 (`config/config.go` 和 `config.yaml`)
 
 **新增配置项：**
 ```yaml

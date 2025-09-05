@@ -16,7 +16,7 @@ NSQ 客户端现在支持失败消息处理机制，当消息消费失败时，�
 
 ## 配置说明
 
-在 `config/config.yaml` 中添加失败消息处理配置：
+在 `config.yaml` 中添加失败消息处理配置：
 
 ```yaml
 consumer:
@@ -87,7 +87,7 @@ import (
 
 func main() {
     // 加载配置
-    cfg, err := config.LoadConfig("config/config.yaml")
+    cfg, err := config.LoadConfig("config.yaml")
     if err != nil {
         panic(err)
     }
@@ -132,19 +132,19 @@ func messageHandler(message *nsq.Message) error {
 #### 启动带失败消息处理的消费者
 
 ```bash
-go run examples/consumer_with_failed_handler_example.go config/config.yaml my_topic my_channel
+go run examples/consumer_with_failed_handler_example.go config.yaml my_topic my_channel
 ```
 
 #### 启动失败消息查看器
 
 ```bash
-go run examples/failed_message_viewer.go config/config.yaml my_topic
+go run examples/failed_message_viewer.go config.yaml my_topic
 ```
 
 #### 启动生产者发送测试消息
 
 ```bash
-go run examples/producer_example.go config/config.yaml my_topic
+go run examples/producer_example.go config.yaml my_topic
 ```
 
 ### 3. 查看失败消息

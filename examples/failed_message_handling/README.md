@@ -37,11 +37,11 @@ failed_message_handling/
 
 ```bash
 # 从项目根目录运行
-go run examples/failed_message_handling/consumer/main.go config/config.yaml test_topic test_channel
+go run examples/failed_message_handling/consumer/main.go config.yaml test_topic test_channel
 ```
 
 参数说明：
-- `config/config.yaml`: 配置文件路径
+- `config.yaml`: 配置文件路径
 - `test_topic`: 要监听的主题名称
 - `test_channel`: 要监听的频道名称
 
@@ -49,25 +49,25 @@ go run examples/failed_message_handling/consumer/main.go config/config.yaml test
 
 ```bash
 # 从项目根目录运行
-go run examples/failed_message_handling/viewer/main.go config/config.yaml test_topic
+go run examples/failed_message_handling/viewer/main.go config.yaml test_topic
 ```
 
 参数说明：
-- `config/config.yaml`: 配置文件路径
+- `config.yaml`: 配置文件路径
 - `test_topic`: 原始主题名称（失败队列会自动添加后缀）
 
 ### 3. 发送测试消息
 
 ```bash
 # 从项目根目录运行
-go run examples/producer_example.go config/config.yaml test_topic 20
+go run examples/producer_example.go config.yaml test_topic 20
 ```
 
 这会发送20条测试消息，其中一些会故意失败以演示失败消息处理。
 
 ## 配置要求
 
-确保在 `config/config.yaml` 中启用了失败消息处理：
+确保在 `config.yaml` 中启用了失败消息处理：
 
 ```yaml
 consumer:

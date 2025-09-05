@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"nsq-client"
 	"os"
 	"os/signal"
 	"strconv"
@@ -11,8 +12,6 @@ import (
 	"time"
 
 	"mlog"
-	"nsq-client/client/producer"
-	"nsq-client/config"
 )
 
 // ExampleMessage 示例消息结构
@@ -25,12 +24,12 @@ type ExampleMessage struct {
 
 func main() {
 	// 加载配置
-	configPath := "config/config.yaml"
+	configPath := "config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
 	}
 
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := nsq_client.LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("加载配置失败: %v", err))
 	}
@@ -62,7 +61,7 @@ func main() {
 	mlog.Info("配置加载成功: config_path=%s", configPath)
 
 	// 创建生产者
-	prod, err := producer.NewProducer(cfg)
+	prod, err := nsq_client.NewProducer(cfg)
 	if err != nil {
 		mlog.Error("创建生产者失败: %v", err)
 		panic(err)
@@ -107,7 +106,7 @@ func main() {
 }
 
 // sendMessages 发送消息
-func sendMessages(ctx context.Context, prod *producer.Producer, cfg *config.Config) error {
+func sendMessages(ctx context.Context, prod *nsq_client.Producer, cfg *nsq_client.Config) error {
 	topic := cfg.Producer.DefaultTopic
 	messageCount := 0
 
@@ -209,7 +208,7 @@ func sendMessages(ctx context.Context, prod *producer.Producer, cfg *config.Conf
 }
 
 // printStats 打印统计信息
-func printStats(ctx context.Context, prod *producer.Producer) {
+func printStats(ctx context.Context, prod *nsq_client.Producer) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 

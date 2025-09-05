@@ -1,4 +1,4 @@
-package config
+package nsq_client
 
 import (
 	"os"

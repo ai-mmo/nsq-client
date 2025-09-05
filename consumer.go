@@ -1,4 +1,4 @@
-package consumer
+package nsq_client
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"mlog"
 	"net/http"
 	"net/url"
-	"nsq-client/config"
 	"runtime"
 	"sync"
 	"time"
@@ -20,7 +19,7 @@ type MessageHandler func(message *nsq.Message) error
 // Consumer NSQ 消息消费者
 type Consumer struct {
 	consumer         *nsq.Consumer
-	config           *config.Config
+	config           *Config
 	handler          MessageHandler
 	topic            string
 	channel          string
@@ -31,12 +30,12 @@ type Consumer struct {
 }
 
 // NewConsumer 创建新的消费者实例
-func NewConsumer(cfg *config.Config, topic, channel string, handler MessageHandler) (*Consumer, error) {
+func NewConsumer(cfg *Config, topic, channel string, handler MessageHandler) (*Consumer, error) {
 	return NewConsumerWithFailedMessageHandler(cfg, topic, channel, handler, nil)
 }
 
 // NewConsumerWithFailedMessageHandler 创建带失败消息处理器的消费者实例
-func NewConsumerWithFailedMessageHandler(cfg *config.Config, topic, channel string, handler MessageHandler, producer MessageProducer) (*Consumer, error) {
+func NewConsumerWithFailedMessageHandler(cfg *Config, topic, channel string, handler MessageHandler, producer MessageProducer) (*Consumer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("配置不能为空")
 	}
