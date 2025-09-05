@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"nsq-client"
+	nsq_client "github.com/ai-mmo/nsq-client"
 	"os"
 	"os/signal"
 	"syscall"

@@ -1,4 +1,4 @@
-module nsq-client
+module github.com/ai-mmo/nsq-client
 
 go 1.24
 

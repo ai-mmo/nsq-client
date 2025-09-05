@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"mlog"
-	"nsq-client"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	nsq_client "github.com/ai-mmo/nsq-client"
 
 	"github.com/nsqio/go-nsq"
 )
