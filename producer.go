@@ -34,7 +34,7 @@ func NewProducer(cfg *Config, logger *zap.Logger) (*Producer, error) {
 
 	if logger == nil {
 		// 初始化 mlog
-		zapConfig := mlog.ZapConfig{
+		zapConfig := &mlog.ZapConfig{
 			Level:           cfg.Logging.Level,
 			Prefix:          cfg.Logging.Prefix,
 			Format:          cfg.Logging.Format,

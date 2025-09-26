@@ -114,7 +114,7 @@ func main() {
     }
 
     // 初始化日志
-    zapConfig := mlog.ZapConfig{
+    zapConfig := &mlog.ZapConfig{
         Level:        cfg.Logging.Level,
         LogInConsole: true,
     }
@@ -213,7 +213,7 @@ func main() {
     }
 
     // 初始化日志
-    zapConfig := mlog.ZapConfig{
+    zapConfig := &mlog.ZapConfig{
         Level:        "info",
         LogInConsole: true,
     }

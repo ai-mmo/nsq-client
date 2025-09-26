@@ -2,7 +2,7 @@ module github.com/ai-mmo/nsq-client
 
 go 1.24
 
-replace mlog => github.com/ai-mmo/mlog v0.0.1
+replace mlog => github.com/ai-mmo/mlog v0.0.9
 
 require (
 	github.com/nsqio/go-nsq v1.1.0
@@ -12,8 +12,9 @@ require (
 )
 
 require (
+	github.com/ai-mmo/lumberjack v0.0.3 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 )

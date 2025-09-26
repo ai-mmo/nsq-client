@@ -46,7 +46,7 @@ func NewConsumerWithFailedMessageHandler(cfg *Config, logger *zap.Logger, topic,
 
 	// 初始化 mlog（如果还没有初始化）
 	if logger == nil {
-		zapConfig := mlog.ZapConfig{
+		zapConfig := &mlog.ZapConfig{
 			Level:           cfg.Logging.Level,
 			Prefix:          cfg.Logging.Prefix,
 			Format:          cfg.Logging.Format,
